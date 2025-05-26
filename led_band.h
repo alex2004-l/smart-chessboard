@@ -3,7 +3,7 @@
 
 #include <Adafruit_NeoPixel.h>
 
-#define PIN_WS2812B 12 
+#define PIN_WS2812B 15 
 #define NUM_PIXELS 64
 
 Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_GRB + NEO_KHZ800);

@@ -1,13 +1,13 @@
 #include "led_band.h"
 #include "moves.h"
+#include "lcd1602.h"
 
-// Placehorder values for now
-#define DS 35
-#define STcp 32
-#define SHcp 34
+#define DS 17
+#define STcp 19
+#define SHcp 18
 
-#define WHITE_BUTTON 12
-#define BLACK_BUTTON 13
+#define WHITE_BUTTON 13
+#define BLACK_BUTTON 16
 
 #define DEBOUNCE_DELAY 100
 
@@ -52,8 +52,8 @@ uint8_t board_configuration[8][8] = {
 uint8_t previous_board[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t board[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-// Placeholder for now
-uint8_t column_pins[8] = {22, 23, 24, 25, 26, 27, 28, 29};
+// Possible to need to change 14
+uint8_t column_pins[8] = {34, 35, 32, 33, 25, 26, 27, 14};
 
 
 void read_board(uint8_t board[8]) {
@@ -198,12 +198,39 @@ void setup() {
   }
 
   Serial.begin(115200);
+  // make sure serial2 is disabled and gpios 16 and 17 can be safely used
+  Serial2.end();
+
+  delay(10000);
+
+  init_lcd();
+
+    Serial.println("Scanning I2C devices...");
+  byte error, address;
+  int nDevices = 0;
+
+  for(address = 1; address < 127; address++ ) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+
+    if (error == 0) {
+      Serial.print("I2C device found at 0x");
+      Serial.println(address, HEX);
+      nDevices++;
+    }
+  }
+
+  if (nDevices == 0) Serial.println("No I2C devices found");
+  else Serial.println("Done.");
+
 }
 
 void loop() {
   read_board(board);
-  run_action();
+  // run_action();
 
-  memcpy(previous_board, board, sizeof(previous_board));
+  display_message("Bunaa, iub!!");
+
+  // memcpy(previous_board, board, sizeof(previous_board));
   delay(1000);
 }
