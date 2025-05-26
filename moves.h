@@ -14,7 +14,7 @@ int get_knight_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][
     {2, 1}, {1, 2}, {-1, 2}, {-2, 1},
     {-2, -1}, {-1, -2}, {1, -2}, {2, -1}
   };
-  uint8_t possible_moves[8][2];
+
   int k = 0;
   for (int i = 0; i < 8; i++) {
     int new_x = x + knight_moves[i][0];
@@ -104,7 +104,9 @@ int get_king_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]
 }
 
 int get_pawn_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2], bool is_white) {
+  int k = 0;
 
+  return k;
 }
 
 
