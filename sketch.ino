@@ -38,6 +38,9 @@ uint8_t board_configuration[8][8] = {
   {ROOK,  KNIGHT, BISHOP, QUEEN, KING,  BISHOP, KNIGHT, ROOK}
 };
 
+uint8_t previous_board[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t board[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+
 uint8_t column_pins[8] = {};
 
 void read_table() {
@@ -46,7 +49,7 @@ void read_table() {
     delay(1);
     board[row] = 0;
     for (int col = 0; col < 8; col++) {
-      board[row] |= (digitalRead(column_pins[col]) == LOW) << col;
+      board[row] |= (digitalRead(column_pins[col]) == HIGH) << col;
     }
   }
 }
@@ -84,6 +87,7 @@ void run_action() {
 }
 
 void setup() {
+  // Inițializare variabile
   current_player = WHITE;
   move_made = false;
   state = BEGINNING;
@@ -99,6 +103,8 @@ void setup() {
 
   attachInterrupt(digitalPinToInterrupt(WHITE_BUTTON), press_button_white, FALLING);
   attachInterrupt(digitalPinToInterrupt(BLACK_BUTTON), press_button_black, FALLING);
+
+  Serial.begin(11520);
 }
 
 
