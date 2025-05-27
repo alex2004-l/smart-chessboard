@@ -4,28 +4,40 @@
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
 
-#define SDA_PIN 21
-#define SCL_PIN 22
+#define I2C_Devices 127
 
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+int scan_I2C_devices(byte devices[10]) {
+  Wire.begin();
 
-void init_lcd() {
-  Wire.begin(SDA_PIN, SCL_PIN);
-  lcd.init();
-  lcd.backlight();
+  byte error, address;
+  int n_devices = 0;
 
-  lcd.setCursor(0, 0);
-  lcd.print("Hello, ESP32!");
-  delay(2000);
-  lcd.clear();
+  for (address = 1; address < I2C_Devices; address++) {
+    Wire.beginTransmission(address);
+    error = Wire.endTransmission();
+
+    if (error == 0) {
+      devices[n_devices++] = address;
+    }
+  }
+
+  return n_devices;
 }
 
-void display_message(const char* message, int col = 0, int row = 0, bool clear_before = true) {
+
+void init_lcd(LiquidCrystal_I2C *lcd) {
+  lcd->init();
+  lcd->backlight();
+  lcd->clear();
+}
+
+
+void display_message(LiquidCrystal_I2C *lcd, const char* message, int col = 0, int row = 0, bool clear_before = true) {
   if (clear_before) {
-    lcd.clear();
+    lcd->clear();
   }
-  lcd.setCursor(col, row);
-  lcd.print(message);
+  lcd->setCursor(col, row);
+  lcd->print(message);
 }
 
 #endif

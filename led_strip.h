@@ -1,18 +1,14 @@
-#ifndef LED_BAND_H
-#define LED_BAND_H
+#ifndef LED_STRIP_H
+#define LED_STRIP_H
 
 #include <Adafruit_NeoPixel.h>
 
-#define PIN_WS2812B 12 
-#define NUM_PIXELS 64
-
-Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_GRB + NEO_KHZ800);
-
-void setup_WS2812B() {
+void setup_WS2812B(Adafruit_NeoPixel &ws2812b) {
   ws2812b.begin();
+  ws2812b.show();
 }
 
-void stop_all_pixels_WS2812B() {
+void stop_all_pixels_WS2812B(Adafruit_NeoPixel &ws2812b) {
   ws2812b.clear();
   ws2812b.show();
 }
@@ -21,23 +17,24 @@ int __get_pixel_index(int x, int y) {
   return (!(x % 2)) ? (x * 8 + y) : (x * 8 - y + 8);
 }
 
-void turn_on_pixels_WS2812B(uint8_t n, uint8_t positions[64][2], uint8_t red, uint8_t green, uint8_t blue, bool one_by_one=false) {
-  uint32_t color = ws2812b.Color(red, green, blue);
+// Default color is red
+void turn_on_pixels_WS2812B(Adafruit_NeoPixel &ws2812b, uint8_t n, uint8_t positions[64][2], uint8_t r=255, uint8_t g=0, uint8_t b=0, bool one_by_one=false) {
+  uint32_t color = ws2812b.Color(r, g, b);
   for (uint8_t i = 0; i < n; i ++) {
     int pixel_idx = __get_pixel_index(positions[i][0], positions[i][1]);
     ws2812b.setPixelColor(pixel_idx, color);
     if (one_by_one)
       ws2812b.show();
+      delay(50);
   }
   if (!one_by_one)
     ws2812b.show();
 }
 
-void turn_all() {
-  uint32_t color = ws2812b.Color(255, 0, 255);
+void turn_all(Adafruit_NeoPixel &ws2812b, uint8_t r=255, uint8_t g=0, uint8_t b=0) {
+  uint32_t color = ws2812b.Color(r, g, b);
   for (uint8_t i = 0; i < 64; i ++) {
     ws2812b.setPixelColor(i, color);
-  
   }
     ws2812b.show();
 }

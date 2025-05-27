@@ -3,25 +3,29 @@
 
 // TODO: Add check to see it it's an enemy piece
 
+int rook_dirs[4][2] = {{1,  0}, {-1, 0}, {0,  1}, {0, -1}};
+int bishop_dirs[4][2] = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+int king_dirs[8][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+int knight_dirs[8][2] = {{2, 1}, {1, 2}, {-1, 2}, {-2, 1}, {-2, -1}, {-1, -2}, {1, -2}, {2, -1}};
+
+typedef enum pieces {
+  EMPTY, PAWN, ROOK, KNIGHT,
+  BISHOP, KING, QUEEN
+} PIECE;
+
+
 bool is_valid(int x, int y) {
   return (x >= 0 && x < 8 && y >= 0 && y < 8);
 }
 
-bool is_empty(int x, int y, uint8_t board[8]) {
-  return ((board[x] & (1 << y)) == 0);
-}
 
-int get_knight_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]) {
-  int knight_moves[8][2] = {
-    {2, 1}, {1, 2}, {-1, 2}, {-2, 1},
-    {-2, -1}, {-1, -2}, {1, -2}, {2, -1}
-  };
-
+int get_knight_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
+
   for (int i = 0; i < 8; i++) {
-    int new_x = x + knight_moves[i][0];
-    int new_y = y + knight_moves[i][1];
-    if (is_valid(new_x, new_y) && is_empty(new_x, new_y, board)) {
+    int new_x = x + knight_dirs[i][0];
+    int new_y = y + knight_dirs[i][1];
+    if (is_valid(new_x, new_y) && (board[new_x][new_y] == EMPTY)) {
       possible_moves[k][0] = new_x;
       possible_moves[k++][1] = new_y;
     }
@@ -30,10 +34,7 @@ int get_knight_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][
 }
 
 
-int get_rook_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]) {
-  int rook_dirs[4][2] = {
-    { 1,  0}, {-1, 0},
-    { 0,  1}, { 0,-1}};
+int get_rook_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int d = 0; d < 4; d++) {
@@ -47,17 +48,14 @@ int get_rook_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]
         possible_moves[k++][1] = ny;
         nx += dx;
         ny += dy;
-      } while(is_valid(nx, ny) && is_empty(nx, ny, board));
+      } while(is_valid(nx, ny) && board[nx][ny] == EMPTY);
     }
   }
   return k;
 }
 
 
-int get_bishop_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]) {
-  int bishop_dirs[4][2] = {
-    {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
-  };
+int get_bishop_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int d = 0; d < 4; d++) {
@@ -71,14 +69,14 @@ int get_bishop_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][
         possible_moves[k++][1] = ny;
         nx += dx;
         ny += dy;
-      } while (is_valid(nx, ny) && is_empty(nx, ny, board));
+      } while (is_valid(nx, ny) && board[nx][ny] == EMPTY);
     }
   }
   return k;
 }
 
 
-int get_queen_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]) {
+int get_queen_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   k += get_rook_moves(x, y, board, possible_moves);
@@ -88,17 +86,13 @@ int get_queen_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2
 }
 
 
-int get_king_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]) {
-  int king_dirs[8][2] = {
-    {1, 0}, {-1, 0}, {0, 1}, {0, -1},
-    {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
-  };
+int get_king_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int i = 0; i < 8; i++) {
     int nx = x + king_dirs[i][0];
     int ny = y + king_dirs[i][1];
-    if (is_valid(nx, ny) && is_empty(nx, ny, board)) {
+    if (is_valid(nx, ny) && board[nx][ny] == EMPTY) {
       possible_moves[k][0] = nx;
       possible_moves[k++][1] = ny;
     }
@@ -108,33 +102,32 @@ int get_king_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]
 
 int get_pawn_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2], bool is_white) {
   int k = 0;
-  int dir = is_white ? 1 : -1;
+  // int dir = is_white ? 1 : -1;
   
-  int start_row = is_white ? 1 : 6;
+  // int start_row = is_white ? 1 : 6;
 
-  // Forward 1 step
-  int nx = x + dir;
-  if (is_valid(nx, y) && is_empty(nx, y, board)) {
-    possible_moves[k][0] = nx;
-    possible_moves[k++][1] = y;
+  //
+  // int nx = x + dir;
+  // if (is_valid(nx, y, board) && is_empty(nx, y, board)) {
+  //   possible_moves[k][0] = nx;
+  //   possible_moves[k++][1] = y;
 
-    // Forward 2 steps from starting position (only if 1 step was free)
-    if (x == start_row && is_empty(nx + dir, y, board)) {
-      possible_moves[k][0] = nx + dir;
-      possible_moves[k++][1] = y;
-    }
-  }
+  //  
+  //   if (x == start_row && is_empty(nx + dir, y, board)) {
+  //     possible_moves[k][0] = nx + dir;
+  //     possible_moves[k++][1] = y;
+  //   }
+  // }
 
-  // Capture diagonally
-  for (int dy = -1; dy <= 1; dy += 2) {
-    int ny = y + dy;
-    int cx = x + dir;
-    if (is_valid(cx, ny) && !is_empty(cx, ny, board)) {
-      possible_moves[k][0] = cx;
-      possible_moves[k++][1] = ny;
-    }
-  }
-
+  //
+  // for (int dy = -1; dy <= 1; dy += 2) {
+  //   int ny = y + dy;
+  //   int cx = x + dir;
+  //   if (is_valid(cx, ny, board) && !is_empty(cx, ny, board)) {
+  //     possible_moves[k][0] = cx;
+  //     possible_moves[k++][1] = ny;
+  //   }
+  // }
   return k;
 }
 

@@ -1,29 +1,28 @@
-#include "led_band.h"
+#include "led_strip.h"
 #include "moves.h"
 #include "lcd1602.h"
 
-#define DS 17
-#define STcp 19
-#define SHcp 18
+// Buttons
+#define WHITE_BUTTON 2
+#define BLACK_BUTTON 3
 
-#define WHITE_BUTTON 13
-#define BLACK_BUTTON 16
+// Led band
+#define PIN_WS2812B 6
+#define NUM_PIXELS 64
 
-#define DEBOUNCE_DELAY 100
+// Capacitive senzor plate
+#define SCL 8
+#define SDO 9
+
+Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_GRB + NEO_KHZ800);
+LiquidCrystal_I2C* lcd = nullptr;
 
 typedef enum player{
   WHITE, BLACK
 } PLAYER;
 
-
-typedef enum pieces {
-  EMPTY, PAWN, ROOK, KNIGHT,
-  BISHOP, KING, QUEEN
-} PIECE;
-
-
 typedef enum states {
-  BEGINNING, READY, PICK_ROW,
+  BEGINNING, START, PICK_ROW,
   PICK_COLUMN, MOVE, END
 } STATES;
 
@@ -32,135 +31,100 @@ uint8_t current_player;
 bool move_made;
 uint8_t state;
 
-uint32_t last_debounce_white = 0;
-uint32_t last_debounce_black = 0;
+// uint32_t last_debounce_white = 0;
+// uint32_t last_debounce_black = 0;
 
 uint32_t player_time_white = 600;
 uint32_t player_time_black = 600;
 
-uint8_t board_configuration[8][8] = {
-  {ROOK,  KNIGHT, BISHOP, QUEEN, KING,  BISHOP, KNIGHT, ROOK},
-  {PAWN,  PAWN,   PAWN,   PAWN,  PAWN,  PAWN,   PAWN,   PAWN},
-  {EMPTY, EMPTY,  EMPTY,  EMPTY, EMPTY, EMPTY,  EMPTY, EMPTY},
-  {EMPTY, EMPTY,  EMPTY,  EMPTY, EMPTY, EMPTY,  EMPTY, EMPTY},
-  {EMPTY, EMPTY,  EMPTY,  EMPTY, EMPTY, EMPTY,  EMPTY, EMPTY},
-  {EMPTY, EMPTY,  EMPTY,  EMPTY, EMPTY, EMPTY,  EMPTY, EMPTY},
-  {PAWN,  PAWN,   PAWN,   PAWN,  PAWN,  PAWN,   PAWN,   PAWN},
-  {ROOK,  KNIGHT, BISHOP, QUEEN, KING,  BISHOP, KNIGHT, ROOK}
+int8_t board_configuration[8][8] = {
+  {-ROOK,  -KNIGHT, -BISHOP, -QUEEN, -KING,  -BISHOP, -KNIGHT, -ROOK},
+  {-PAWN,  -PAWN,   -PAWN,   -PAWN,  -PAWN,  -PAWN,   -PAWN,   -PAWN},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { PAWN,  PAWN,    PAWN,    PAWN,   PAWN,   PAWN,    PAWN,   PAWN},
+  { ROOK,  KNIGHT,  BISHOP,  QUEEN,  KING,   BISHOP,  KNIGHT, ROOK}
 };
 
-uint8_t previous_board[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t board[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-
-// Possible to need to change 14
-uint8_t column_pins[8] = {34, 35, 32, 33, 25, 26, 27, 14};
-
-
-void read_board(uint8_t board[8]) {
-  for (int row = 0; row < 8; row ++) {
-    sendToShiftRegister(1 << row);
-    delay(1);
-    board[row] = 0;
-    for (int col = 0; col < 8; col++) {
-      board[row] |= (digitalRead(column_pins[col]) == HIGH) << col;
-    }
-  }
-}
-
-
-uint8_t count_pieces_on_table(uint8_t b[8]) {
-  uint8_t cnt_pieces = 0;
-  for (int row = 0; row < 8; row ++) {
-    for (int col = 0; col < 8; col++) {
-      if (b[row] & (1<< col))
-        cnt_pieces ++;
-    }
-  }
-  return cnt_pieces;
-}
+uint8_t possible_moves[64][2];
 
 // interrupt when white presses button
-void IRAM_ATTR press_button_white() {
-  if ((millis() - last_debounce_white) < DEBOUNCE_DELAY) return;
-  last_debounce_white = millis();
+// void IRAM_ATTR press_button_white() {
+//   if ((millis() - last_debounce_white) < DEBOUNCE_DELAY) return;
+//   last_debounce_white = millis();
 
-  switch (state) {
-    case BEGINNING:
-      Serial.println("Please put all pieces on the board before starting.");
-      break;
+//   switch (state) {
+//     case BEGINNING:
+//       Serial.println("Please put all pieces on the board before starting.");
+//       break;
 
-    case READY:
-      if (current_player == WHITE) {
-        state = MOVE;
-        // to start timer for white
-      }
-      break;
-    case PICK_ROW:
-      break;
-    case PICK_COLUMN:
-      break;
-    case MOVE:
-        if (current_player == WHITE) {
-            current_player = BLACK;
-            state = PICK_ROW;
-        }
-        break;
+//     case READY:
+//       if (current_player == WHITE) {
+//         state = MOVE;
+//         // to start timer for white
+//       }
+//       break;
+//     case PICK_ROW:
+//       break;
+//     case PICK_COLUMN:
+//       break;
+//     case MOVE:
+//         if (current_player == WHITE) {
+//             current_player = BLACK;
+//             state = PICK_ROW;
+//         }
+//         break;
 
-    default:
-      break;
-  }
-}
+//     default:
+//       break;
+//   }
+// }
 
 // interrupt when black presses button
-void IRAM_ATTR press_button_black() {
-  if ((millis() - last_debounce_black) < DEBOUNCE_DELAY) return;
-  last_debounce_black = millis();
+// void IRAM_ATTR press_button_black() {
+//   if ((millis() - last_debounce_black) < DEBOUNCE_DELAY) return;
+//   last_debounce_black = millis();
 
-  switch (state) {
-    case BEGINNING:
-      Serial.println("Please put all pieces on the board before starting.");
-      break;
-    case READY:
-      if (current_player == BLACK) {
-        state = MOVE;
-        Serial.println("Game started. Black's turn.");
-        // To start timer for black
-      }
-      break;
-    case PICK:
-      break;
-    case MOVE:
-        if (current_player == BLACK) {
-            current_player = WHITE;
-            state = PICK;
-        }
-        break;
+//   switch (state) {
+//     case BEGINNING:
+//       display_message(lcd"Please put all pieces on the board before starting.");
+//       break;
+//     case READY:
+//       if (current_player == BLACK) {
+//         state = MOVE;
+//         Serial.println("Game started. Black's turn.");
+//         // To start timer for black
+//       }
+//       break;
+//     case PICK_ROW:
+//       break;
+//     case PICK_COLUMN:
+//         if (current_player == BLACK) {
+//             current_player = WHITE;
+//             state = PICK_ROW;
+//         }
+//         break;
 
-    default:
-      break;
-  }
-
-}
+//     default:
+//       break;
+//   }
+// }
 
 
 void run_action() {
     switch (state)
     {
     case BEGINNING:
-        if (count_pieces_on_table(board) == 32) {
-          state = READY;
-        } else {
-            Serial.println("Waiting for all pieces to be placed on the board.");
-        }
+        Serial.println("Waiting for all pieces to be placed on the board.");
         break;
-    case READY:
+    case START:
         Serial.println("All pieces on board. Game ready to start.");
         break;
-    case PICK:
+    case PICK_ROW:
         break;
-    case MOVE:
-        break;
-    case CAPTURE:
+    case PICK_COLUMN:
         break;
     case END:
         break;
@@ -170,71 +134,53 @@ void run_action() {
 }
 
 
-void sendToShiftRegister(byte data) {
-  digitalWrite(STcp, LOW);
-  shiftOut(DS, SHcp, MSBFIRST, data); 
-  digitalWrite(STcp, HIGH);
+byte Read_TTP229_Keypad(void) {
+  byte Num;
+  byte Key_State = 0;
+  for(Num = 1; Num <= 16; Num++)
+  {
+    digitalWrite(SCL, LOW);
+    if (!digitalRead(SDO))
+      Key_State = Num;
+      digitalWrite(SCL, HIGH);
+  } 
+  return Key_State;
 }
 
 
 void setup() {
-  // Inițializare variabile
   current_player = WHITE;
   move_made = false;
   state = BEGINNING;
 
-  // Pinii pentru registru
-  // pinMode(DS, OUTPUT);
-  // pinMode(STcp, OUTPUT);
-  // pinMode(SHcp, OUTPUT);
+  // pinii pentru butoane
+  pinMode(WHITE_BUTTON, INPUT);
+  pinMode(BLACK_BUTTON, INPUT);
 
-  // // pinii pentru butoane
-  pinMode(WHITE_BUTTON, INPUT_PULLUP);
-  pinMode(BLACK_BUTTON, INPUT_PULLUP);
+  pinMode(SCL, OUTPUT); 
+  pinMode(SDO, INPUT);
 
-  attachInterrupt(digitalPinToInterrupt(WHITE_BUTTON), press_button_white, FALLING);
-  attachInterrupt(digitalPinToInterrupt(BLACK_BUTTON), press_button_black, FALLING);
-
-  for (int i = 0; i < 8; i++) {
-    pinMode(column_pins[i], INPUT);
-  }
+  // attachInterrupt(digitalPinToInterrupt(WHITE_BUTTON), press_button_white, FALLING);
+  // attachInterrupt(digitalPinToInterrupt(BLACK_BUTTON), press_button_black, FALLING);
 
   Serial.begin(115200);
-  // make sure serial2 is disabled and gpios 16 and 17 can be safely used
-  Serial2.end();
 
+  Serial.println("Scanning I2C devices...");
 
-  // init_lcd();
+  byte i2c_devices[10];
+  int n_devices = scan_I2C_devices(i2c_devices);
 
-  // Serial.println("Scanning I2C devices...");
-  // byte error, address;
-  // int nDevices = 0;
-
-  // for(address = 1; address < 127; address++ ) {
-  //   Wire.beginTransmission(address);
-  //   error = Wire.endTransmission();
-
-  //   if (error == 0) {
-  //     Serial.print("I2C device found at 0x");
-  //     Serial.println(address, HEX);
-  //     nDevices++;
-  //   }
-  // }
-
-
-  // if (nDevices == 0) Serial.println("No I2C devices found");
-  // else Serial.println("Done.");
-  setup_WS2812B();
-  turn_all();
+  if (n_devices > 0) {
+    byte lcd_address = i2c_devices[0];
+    lcd = new LiquidCrystal_I2C(lcd_address, 16, 2);
+    init_lcd(lcd);
+  } else {
+    Serial.println("No I2C devices found!");
+  }
 }
 
+
 void loop() {
-  // read_board(board);
-  // run_action();
 
-  // display_message("Bunaa, iub!!");
-
-  // memcpy(previous_board, board, sizeof(previous_board));
-  ws2812b.show();
   delay(1000);
 }
