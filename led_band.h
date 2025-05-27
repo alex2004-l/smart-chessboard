@@ -3,7 +3,7 @@
 
 #include <Adafruit_NeoPixel.h>
 
-#define PIN_WS2812B 15 
+#define PIN_WS2812B 12 
 #define NUM_PIXELS 64
 
 Adafruit_NeoPixel ws2812b(NUM_PIXELS, PIN_WS2812B, NEO_GRB + NEO_KHZ800);
@@ -30,6 +30,15 @@ void turn_on_pixels_WS2812B(uint8_t n, uint8_t positions[64][2], uint8_t red, ui
       ws2812b.show();
   }
   if (!one_by_one)
+    ws2812b.show();
+}
+
+void turn_all() {
+  uint32_t color = ws2812b.Color(255, 0, 255);
+  for (uint8_t i = 0; i < 64; i ++) {
+    ws2812b.setPixelColor(i, color);
+  
+  }
     ws2812b.show();
 }
 

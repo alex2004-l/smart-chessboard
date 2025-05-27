@@ -1,6 +1,8 @@
 #ifndef MOVES_H
 #define MOVES_H
 
+// TODO: Add check to see it it's an enemy piece
+
 bool is_valid(int x, int y) {
   return (x >= 0 && x < 8 && y >= 0 && y < 8);
 }
@@ -75,6 +77,7 @@ int get_bishop_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][
   return k;
 }
 
+
 int get_queen_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
@@ -103,9 +106,35 @@ int get_king_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2]
   return k;
 }
 
-int get_pawn_moves(int x, int y, uint8_t board[8], uint8_t possible_moves[32][2], bool is_white) {
+int get_pawn_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2], bool is_white) {
   int k = 0;
-    // TODO
+  int dir = is_white ? 1 : -1;
+  
+  int start_row = is_white ? 1 : 6;
+
+  // Forward 1 step
+  int nx = x + dir;
+  if (is_valid(nx, y) && is_empty(nx, y, board)) {
+    possible_moves[k][0] = nx;
+    possible_moves[k++][1] = y;
+
+    // Forward 2 steps from starting position (only if 1 step was free)
+    if (x == start_row && is_empty(nx + dir, y, board)) {
+      possible_moves[k][0] = nx + dir;
+      possible_moves[k++][1] = y;
+    }
+  }
+
+  // Capture diagonally
+  for (int dy = -1; dy <= 1; dy += 2) {
+    int ny = y + dy;
+    int cx = x + dir;
+    if (is_valid(cx, ny) && !is_empty(cx, ny, board)) {
+      possible_moves[k][0] = cx;
+      possible_moves[k++][1] = ny;
+    }
+  }
+
   return k;
 }
 

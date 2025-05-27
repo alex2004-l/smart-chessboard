@@ -23,8 +23,8 @@ typedef enum pieces {
 
 
 typedef enum states {
-  BEGINNING, READY, PICK,
-  MOVE, CAPTURE, END
+  BEGINNING, READY, PICK_ROW,
+  PICK_COLUMN, MOVE, END
 } STATES;
 
 
@@ -95,12 +95,14 @@ void IRAM_ATTR press_button_white() {
         // to start timer for white
       }
       break;
-    case PICK:
+    case PICK_ROW:
+      break;
+    case PICK_COLUMN:
       break;
     case MOVE:
         if (current_player == WHITE) {
             current_player = BLACK;
-            state = PICK;
+            state = PICK_ROW;
         }
         break;
 
@@ -111,7 +113,7 @@ void IRAM_ATTR press_button_white() {
 
 // interrupt when black presses button
 void IRAM_ATTR press_button_black() {
-    if ((millis() - last_debounce_black) < DEBOUNCE_DELAY) return;
+  if ((millis() - last_debounce_black) < DEBOUNCE_DELAY) return;
   last_debounce_black = millis();
 
   switch (state) {
@@ -182,11 +184,11 @@ void setup() {
   state = BEGINNING;
 
   // Pinii pentru registru
-  pinMode(DS, OUTPUT);
-  pinMode(STcp, OUTPUT);
-  pinMode(SHcp, OUTPUT);
+  // pinMode(DS, OUTPUT);
+  // pinMode(STcp, OUTPUT);
+  // pinMode(SHcp, OUTPUT);
 
-  // pinii pentru butoane
+  // // pinii pentru butoane
   pinMode(WHITE_BUTTON, INPUT_PULLUP);
   pinMode(BLACK_BUTTON, INPUT_PULLUP);
 
@@ -201,36 +203,38 @@ void setup() {
   // make sure serial2 is disabled and gpios 16 and 17 can be safely used
   Serial2.end();
 
-  delay(10000);
 
-  init_lcd();
+  // init_lcd();
 
-    Serial.println("Scanning I2C devices...");
-  byte error, address;
-  int nDevices = 0;
+  // Serial.println("Scanning I2C devices...");
+  // byte error, address;
+  // int nDevices = 0;
 
-  for(address = 1; address < 127; address++ ) {
-    Wire.beginTransmission(address);
-    error = Wire.endTransmission();
+  // for(address = 1; address < 127; address++ ) {
+  //   Wire.beginTransmission(address);
+  //   error = Wire.endTransmission();
 
-    if (error == 0) {
-      Serial.print("I2C device found at 0x");
-      Serial.println(address, HEX);
-      nDevices++;
-    }
-  }
+  //   if (error == 0) {
+  //     Serial.print("I2C device found at 0x");
+  //     Serial.println(address, HEX);
+  //     nDevices++;
+  //   }
+  // }
 
-  if (nDevices == 0) Serial.println("No I2C devices found");
-  else Serial.println("Done.");
 
+  // if (nDevices == 0) Serial.println("No I2C devices found");
+  // else Serial.println("Done.");
+  setup_WS2812B();
+  turn_all();
 }
 
 void loop() {
-  read_board(board);
+  // read_board(board);
   // run_action();
 
-  display_message("Bunaa, iub!!");
+  // display_message("Bunaa, iub!!");
 
   // memcpy(previous_board, board, sizeof(previous_board));
+  ws2812b.show();
   delay(1000);
 }
