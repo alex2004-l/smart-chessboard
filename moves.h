@@ -100,7 +100,7 @@ int get_king_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32]
   return k;
 }
 
-int get_pawn_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2], bool is_white) {
+int get_pawn_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2], bool is_white) {
   int k = 0;
   int dir = is_white ? 1 : -1;
   

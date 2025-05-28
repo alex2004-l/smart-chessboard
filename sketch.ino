@@ -31,8 +31,10 @@ uint8_t current_player;
 bool move_made;
 uint8_t state;
 
-int8_t selected_row   = -1;
+int8_t selected_row    = -1;
 int8_t selected_column = -1;
+int8_t new_row         = -1;
+int8_t new_column     = -1;
 
 uint32_t last_debounce_white = 0;
 uint32_t last_debounce_black = 0;
@@ -46,16 +48,17 @@ volatile bool black_pressed = false;
 byte key = 0;
 
 int8_t board_configuration[8][8] = {
-  {-ROOK,  -KNIGHT, -BISHOP, -QUEEN, -KING,  -BISHOP, -KNIGHT, -ROOK},
-  {-PAWN,  -PAWN,   -PAWN,   -PAWN,  -PAWN,  -PAWN,   -PAWN,   -PAWN},
-  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
-  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
-  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
-  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { ROOK,  KNIGHT,  BISHOP,  QUEEN,  KING,   BISHOP,  KNIGHT, ROOK},
   { PAWN,  PAWN,    PAWN,    PAWN,   PAWN,   PAWN,    PAWN,   PAWN},
-  { ROOK,  KNIGHT,  BISHOP,  QUEEN,  KING,   BISHOP,  KNIGHT, ROOK}
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  { EMPTY, EMPTY,   EMPTY,   EMPTY,  EMPTY,  EMPTY,   EMPTY,  EMPTY},
+  {-PAWN,  -PAWN,   -PAWN,   -PAWN,  -PAWN,  -PAWN,   -PAWN,   -PAWN},
+  {-ROOK,  -KNIGHT, -BISHOP, -QUEEN, -KING,  -BISHOP, -KNIGHT, -ROOK}
 };
 
+int no_moves = 0;
 uint8_t possible_moves[64][2];
 
 void beginning(void) {
@@ -91,7 +94,7 @@ void pick_piece_to_move(void) {
   } else {
     display_message(lcd, "BLACK", 0, 1, false);
   }
-  delay(500);
+  delay(1000);
   key = Read_TTP229_Keypad();
   if (key) {
     Serial.println(key);
@@ -100,16 +103,23 @@ void pick_piece_to_move(void) {
         selected_row = key - 1;
       } else {
         display_message(lcd, "Row already selected");
+        delay(1000);
+        return;
       }
     } else {
       if (selected_column == -1) {
         selected_column = key - 9;
       } else {
         display_message(lcd, "Column already selected");
+        delay(1000);
+        return;
       }
     }
   }
   if (selected_row != -1 && selected_column != -1) {
+    Serial.print(selected_row);
+    Serial.print(" ");
+    Serial.println(selected_column);
 
     int8_t piece = board_configuration[selected_row][selected_column];
     if (current_player == WHITE && piece < 0) {
@@ -126,17 +136,91 @@ void pick_piece_to_move(void) {
         break;
       case PAWN:
         display_message(lcd, "Pawn");
+        no_moves = get_pawn_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
+        break;
+      case BISHOP:
+        display_message(lcd, "BISHOP");
+        no_moves = get_bishop_moves(selected_row, selected_column, board_configuration, possible_moves);
+        break;
+      case ROOK:
+        display_message(lcd, "ROOK");
+        no_moves = get_rook_moves(selected_row, selected_column, board_configuration, possible_moves);
+        break;
+      case KNIGHT:
+        display_message(lcd, "KNIGHT");
+        no_moves = get_knight_moves(selected_row, selected_column, board_configuration, possible_moves);
+        break;
+      case KING:
+        display_message(lcd, "KING");
+        no_moves = get_king_moves(selected_row, selected_column, board_configuration, possible_moves);
+        break;
+      case QUEEN:
+        display_message(lcd, "QUEEN");
+        no_moves = get_queen_moves(selected_row, selected_column, board_configuration, possible_moves);
         break;
       default:
         display_message(lcd, "Something fishy");
         break;
       };
     }
-
-    selected_row = -1;
-    selected_column = -1;
+    if (!no_moves) {
+      state = PICK_PIECE_TO_MOVE;
+      display_message(lcd, "No available moves");
+      selected_row = -1;
+      selected_column = -1;
+    }
+    if (state == PICK_NEW_POSITION) {
+      turn_on_pixels_WS2812B(ws2812b, no_moves, possible_positions);
+    }
+    delay(1000);
   }
+}
 
+void pick_new_position(void) {
+  display_message(lcd, "Select new pos");
+  if (current_player == WHITE) {
+    display_message(lcd, "WHITE", 0, 1, false);
+  } else {
+    display_message(lcd, "BLACK", 0, 1, false);
+  }
+  delay(100);
+  key = Read_TTP229_Keypad();
+  if (key) {
+    Serial.println(key);
+    if (key <= 8) {
+      if (new_row == -1) {
+        new_row = key - 1;
+      } else {
+        display_message(lcd, "Row already selected");
+        delay(1000);
+        return;
+      }
+    } else {
+      if (new_column == -1) {
+        new_column = key - 9;
+      } else {
+        display_message(lcd, "Column already selected");
+        delay(1000);
+        return;
+      }
+    }
+  }
+  if (new_column != -1 && new_row != -1) {
+    for (int k = 0; k < no_moves; k++) {
+      if (possible_moves[k][0] == new_row && possible_moves[k][1] == new_column) {
+        stop_all_pixels(ws2812b);
+        state = MOVE;
+        // to maybe update the lights
+        board_config[new_row][new_column] = board_config[selected_row][selected_column];
+        board_config[selected_row][selected_column] = EMPTY;
+      }
+    }
+
+    if (state == PICK_NEW_POSITION) {
+      display_message(lcd, "Illegal position");
+      delay(1000);
+    }
+  }
 }
 
 void run_action() {
@@ -152,7 +236,19 @@ void run_action() {
         pick_piece_to_move();
         break;
     case PICK_NEW_POSITION:
-        display_message(lcd, "Selected new position");
+        pick_new_position();
+        break;
+    case MOVE:
+        if ((current_player == WHITE && white_pressed)|| (current_player==BLACK && black_pressed)) {
+          state = PICK_PIECE_TO_MOVE;
+          current_player = (current_player == WHITE) ? BLACK : WHITE;
+          white_pressed = false;
+          black_pressed = false;
+        } else if ((current_player == WHITE && black_pressed)|| (current_player==BLACK && white_pressed)) {
+          display_message(lcd, "NOT YOUR TURN");
+          white_pressed = false;
+          black_pressed = false;
+        }
         break;
     case END:
         break;
@@ -211,12 +307,16 @@ void setup() {
   EIMSK |= (1 << INT0) | (1 << INT1);
   sei();
 
+  setup_WS2812B(ws2812b);
+  // turn_all(ws2812b);
+
   display_message(lcd, "Smart chessboard");
 }
 
 
 void loop() {
   run_action();
+  // turn_all(ws2812b);
   delay(1000);
 }
 
