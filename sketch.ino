@@ -28,13 +28,12 @@ typedef enum states {
 
 
 uint8_t current_player;
-bool move_made;
 uint8_t state;
 
 int8_t selected_row    = -1;
 int8_t selected_column = -1;
 int8_t new_row         = -1;
-int8_t new_column     = -1;
+int8_t new_column      = -1;
 
 uint32_t last_debounce_white = 0;
 uint32_t last_debounce_black = 0;
@@ -126,19 +125,24 @@ void pick_piece_to_move(void) {
   if (is_valid(selected_row, selected_column)) {
 
     int8_t piece = board_configuration[selected_row][selected_column];
+      if (piece == EMPTY) {
+        display_message(lcd, "No piece here");
+        selected_row = selected_column = -1;
+        return;
+      }
+
     if ((current_player == WHITE && piece < 0)
-          || (current_player == BLACK && piece > 0)) {
+        || (current_player == BLACK && piece > 0)) {
       display_message(lcd, "Not your piece");
-    } else {
+      selected_row = -1;
+      selected_column = -1;
+      return;
+    }
+    else {
       piece = (piece < 0) ? -piece : piece;
-      state = PICK_NEW_POSITION;
       switch(piece) {
-      case EMPTY:
-        display_message(lcd, "No piece");
-        state = PICK_PIECE_TO_MOVE;
-        break;
       case PAWN:
-        display_message(lcd, "Pawn");
+        display_message(lcd, "PAWN");
         no_moves = get_pawn_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
         break;
       case BISHOP:
@@ -166,15 +170,16 @@ void pick_piece_to_move(void) {
         break;
       };
     }
-    if (!no_moves) {
-      state = PICK_PIECE_TO_MOVE;
-      display_message(lcd, "No available moves");
-      selected_row = -1;
-      selected_column = -1;
-    }
-    if (state == PICK_NEW_POSITION) {
+
+    if (no_moves > 0) {
+      state = PICK_NEW_POSITION;
       turn_on_pixels_WS2812B(ws2812b, no_moves, possible_moves);
+    } else {
+      display_message(lcd, "No legal moves");
+      selected_row = selected_column = -1;
+      state = PICK_PIECE_TO_MOVE;
     }
+
     delay(1000);
   }
 }
@@ -193,16 +198,28 @@ void pick_new_position(void) {
     for (int k = 0; k < no_moves; k++) {
       if (possible_moves[k][0] == new_row && possible_moves[k][1] == new_column) {
         stop_all_pixels_WS2812B(ws2812b);
+        uint8_t pos [2][2] = {{new_row, new_column}, {selected_row, selected_column}};
+        turn_on_pixels_WS2812B(ws2812b, 2, )
         state = MOVE;
         display_message(lcd, "Move piece");
-        selected_row    = -1;
-        selected_column = -1;
-        new_row         = -1;
-        new_column     = -1;
-
 
         board_configuration[new_row][new_column] = board_configuration[selected_row][selected_column];
         board_configuration[selected_row][selected_column] = EMPTY;
+
+        uint8_t opponent = (current_player == WHITE) ? BLACK : WHITE;
+        if (is_checkmate(board_configuration, opponent)) {
+          display_message(lcd, "Checkmate!");
+          state = END;
+        } else if (is_king_in_check(board_configuration, opponent)) {
+          display_message(lcd, "Check!");
+        }
+
+        selected_row    = -1;
+        selected_column = -1;
+        new_row         = -1;
+        new_column      = -1;
+
+        return;
       }
     }
 
@@ -213,6 +230,7 @@ void pick_new_position(void) {
     }
   }
 }
+
 
 void run_action() {
     switch (state)
@@ -245,6 +263,13 @@ void run_action() {
         }
         break;
     case END:
+        display_message(lcd, "Winner");
+        display_message(lcd,  (current_player == WHITE) ? "WHITE" : "BLACK", 0, 1, false);
+        if (white_pressed || black_pressed) {
+          state = BEGINNING;
+          white_pressed = false;
+          black_pressed = false;
+        }
         break;
     default:
         break;
@@ -269,7 +294,6 @@ byte Read_TTP229_Keypad(void) {
 
 void setup() {
   current_player = WHITE;
-  move_made = false;
   state = BEGINNING;
 
   // pinii pentru butoane
@@ -302,7 +326,6 @@ void setup() {
   sei();
 
   setup_WS2812B(ws2812b);
-  // turn_all(ws2812b);
 
   display_message(lcd, "Smart chessboard");
 }

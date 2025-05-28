@@ -166,7 +166,8 @@ bool find_king(int8_t board[8][8], bool white_to_move, uint8_t *king_row, uint8_
 bool is_king_in_check(int8_t board[8][8], bool white_to_move) {
     uint8_t king_row, king_col;
     if (!find_king(board, white_to_move, &king_row, &king_col))
-        return true; // illegal position
+        return true; // illegal board ?? shouldn t happen
+        
 
     uint8_t opponent_moves[64][2];
     int n_moves;
