@@ -19,7 +19,7 @@ bool is_valid(int x, int y) {
 }
 
 
-int get_knight_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
+int get_knight_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int i = 0; i < 8; i++) {
@@ -34,7 +34,7 @@ int get_knight_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[3
 }
 
 
-int get_rook_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
+int get_rook_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int d = 0; d < 4; d++) {
@@ -55,7 +55,7 @@ int get_rook_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32]
 }
 
 
-int get_bishop_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
+int get_bishop_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int d = 0; d < 4; d++) {
@@ -76,7 +76,7 @@ int get_bishop_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[3
 }
 
 
-int get_queen_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
+int get_queen_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   k += get_rook_moves(x, y, board, possible_moves);
@@ -86,7 +86,7 @@ int get_queen_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32
 }
 
 
-int get_king_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2]) {
+int get_king_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2]) {
   int k = 0;
 
   for (int i = 0; i < 8; i++) {
@@ -103,14 +103,12 @@ int get_king_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32]
 int get_pawn_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][2], bool is_white) {
   int k = 0;
   int dir = is_white ? 1 : -1;
-  
   int start_row = is_white ? 1 : 6;
   
   int nx = x + dir;
   if (is_valid(nx, y) && board[nx][y] == EMPTY) {
     possible_moves[k][0] = nx;
     possible_moves[k++][1] = y;
-
    
     if (x == start_row && board[nx + dir][y] == EMPTY) {
       possible_moves[k][0] = nx + dir;
@@ -121,7 +119,7 @@ int get_pawn_moves(int x, int y, int8_t board[8][8], uint8_t possible_moves[32][
   for (int dy = -1; dy <= 1; dy += 2) {
     int ny = y + dy;
     int cx = x + dir;
-    if (is_valid(cx, ny) && board[cx][ny] == EMPTY) {
+    if (is_valid(cx, ny) && board[cx][ny] != EMPTY) {
       possible_moves[k][0] = cx;
       possible_moves[k++][1] = ny;
     }

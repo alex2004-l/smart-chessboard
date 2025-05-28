@@ -87,6 +87,32 @@ void start(void) {
   }
 }
 
+
+void read_position(uint8_t *row, uint8_t *column){
+  key = Read_TTP229_Keypad();
+  if (key) {
+    Serial.println(key);
+    if (key <= 8) {
+      if (*row == -1) {
+        *row = key - 1;
+      } else {
+        display_message(lcd, "Row already selected");
+        delay(1000);
+        return;
+      }
+    } else {
+      if (*column == -1) {
+        *column = key - 9;
+      } else {
+        display_message(lcd, "Column already selected");
+        delay(1000);
+        return;
+      }
+    }
+  }
+}
+
+
 void pick_piece_to_move(void) {
   display_message(lcd, "Select piece");
   if (current_player == WHITE) {
@@ -95,36 +121,13 @@ void pick_piece_to_move(void) {
     display_message(lcd, "BLACK", 0, 1, false);
   }
   delay(1000);
-  key = Read_TTP229_Keypad();
-  if (key) {
-    Serial.println(key);
-    if (key <= 8) {
-      if (selected_row == -1) {
-        selected_row = key - 1;
-      } else {
-        display_message(lcd, "Row already selected");
-        delay(1000);
-        return;
-      }
-    } else {
-      if (selected_column == -1) {
-        selected_column = key - 9;
-      } else {
-        display_message(lcd, "Column already selected");
-        delay(1000);
-        return;
-      }
-    }
-  }
-  if (selected_row != -1 && selected_column != -1) {
-    Serial.print(selected_row);
-    Serial.print(" ");
-    Serial.println(selected_column);
+  read_position(&selected_row, &selected_column);
+
+  if (is_valid(selected_row, selected_column)) {
 
     int8_t piece = board_configuration[selected_row][selected_column];
-    if (current_player == WHITE && piece < 0) {
-      display_message(lcd, "Not your piece");
-    } else if (current_player == BLACK && piece > 0) {
+    if ((current_player == WHITE && piece < 0)
+          || (current_player == BLACK && piece > 0)) {
       display_message(lcd, "Not your piece");
     } else {
       piece = (piece < 0) ? -piece : piece;
@@ -170,7 +173,7 @@ void pick_piece_to_move(void) {
       selected_column = -1;
     }
     if (state == PICK_NEW_POSITION) {
-      turn_on_pixels_WS2812B(ws2812b, no_moves, possible_positions);
+      turn_on_pixels_WS2812B(ws2812b, no_moves, possible_moves);
     }
     delay(1000);
   }
@@ -184,40 +187,21 @@ void pick_new_position(void) {
     display_message(lcd, "BLACK", 0, 1, false);
   }
   delay(100);
-  key = Read_TTP229_Keypad();
-  if (key) {
-    Serial.println(key);
-    if (key <= 8) {
-      if (new_row == -1) {
-        new_row = key - 1;
-      } else {
-        display_message(lcd, "Row already selected");
-        delay(1000);
-        return;
-      }
-    } else {
-      if (new_column == -1) {
-        new_column = key - 9;
-      } else {
-        display_message(lcd, "Column already selected");
-        delay(1000);
-        return;
-      }
-    }
-  }
-  if (new_column != -1 && new_row != -1) {
+  read_position(&new_row, &new_column);
+
+  if (is_valid(new_row, new_column)) {
     for (int k = 0; k < no_moves; k++) {
       if (possible_moves[k][0] == new_row && possible_moves[k][1] == new_column) {
-        stop_all_pixels(ws2812b);
+        stop_all_pixels_WS2812B(ws2812b);
         state = MOVE;
-        // to maybe update the lights
-        board_config[new_row][new_column] = board_config[selected_row][selected_column];
-        board_config[selected_row][selected_column] = EMPTY;
+        display_message(lcd, "Move piece");
+        board_configuration[new_row][new_column] = board_configuration[selected_row][selected_column];
+        board_configuration[selected_row][selected_column] = EMPTY;
       }
     }
 
     if (state == PICK_NEW_POSITION) {
-      display_message(lcd, "Illegal position");
+      display_message(lcd, "Illegal move");
       delay(1000);
     }
   }
@@ -242,6 +226,8 @@ void run_action() {
         if ((current_player == WHITE && white_pressed)|| (current_player==BLACK && black_pressed)) {
           state = PICK_PIECE_TO_MOVE;
           current_player = (current_player == WHITE) ? BLACK : WHITE;
+          display_message(lcd, "Player's turn:");
+          display_message(lcd, (current_player == WHITE) ? "WHITE" : "BLACK");
           white_pressed = false;
           black_pressed = false;
         } else if ((current_player == WHITE && black_pressed)|| (current_player==BLACK && white_pressed)) {
