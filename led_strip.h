@@ -14,7 +14,7 @@ void stop_all_pixels_WS2812B(Adafruit_NeoPixel &ws2812b) {
 }
 
 int __get_pixel_index(int x, int y) {
-  return (!(x % 2)) ? (x * 8 + y) : (x * 8 - y + 8);
+  return (!(x % 2)) ? (x * 8 + y) : (x * 8 - y + 7);
 }
 
 // Default color is red

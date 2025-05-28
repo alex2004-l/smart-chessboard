@@ -88,7 +88,7 @@ void start(void) {
 }
 
 
-void read_position(uint8_t *row, uint8_t *column){
+void read_position(int8_t *row, int8_t *column){
   key = Read_TTP229_Keypad();
   if (key) {
     Serial.println(key);
@@ -143,23 +143,23 @@ void pick_piece_to_move(void) {
         break;
       case BISHOP:
         display_message(lcd, "BISHOP");
-        no_moves = get_bishop_moves(selected_row, selected_column, board_configuration, possible_moves);
+        no_moves = get_bishop_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
         break;
       case ROOK:
         display_message(lcd, "ROOK");
-        no_moves = get_rook_moves(selected_row, selected_column, board_configuration, possible_moves);
+        no_moves = get_rook_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
         break;
       case KNIGHT:
         display_message(lcd, "KNIGHT");
-        no_moves = get_knight_moves(selected_row, selected_column, board_configuration, possible_moves);
+        no_moves = get_knight_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
         break;
       case KING:
         display_message(lcd, "KING");
-        no_moves = get_king_moves(selected_row, selected_column, board_configuration, possible_moves);
+        no_moves = get_king_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
         break;
       case QUEEN:
         display_message(lcd, "QUEEN");
-        no_moves = get_queen_moves(selected_row, selected_column, board_configuration, possible_moves);
+        no_moves = get_queen_moves(selected_row, selected_column, board_configuration, possible_moves, current_player == WHITE);
         break;
       default:
         display_message(lcd, "Something fishy");
@@ -195,6 +195,12 @@ void pick_new_position(void) {
         stop_all_pixels_WS2812B(ws2812b);
         state = MOVE;
         display_message(lcd, "Move piece");
+        selected_row    = -1;
+        selected_column = -1;
+        new_row         = -1;
+        new_column     = -1;
+
+
         board_configuration[new_row][new_column] = board_configuration[selected_row][selected_column];
         board_configuration[selected_row][selected_column] = EMPTY;
       }
@@ -202,6 +208,7 @@ void pick_new_position(void) {
 
     if (state == PICK_NEW_POSITION) {
       display_message(lcd, "Illegal move");
+      new_row = new_column = -1;
       delay(1000);
     }
   }
@@ -228,6 +235,7 @@ void run_action() {
           current_player = (current_player == WHITE) ? BLACK : WHITE;
           display_message(lcd, "Player's turn:");
           display_message(lcd, (current_player == WHITE) ? "WHITE" : "BLACK");
+          
           white_pressed = false;
           black_pressed = false;
         } else if ((current_player == WHITE && black_pressed)|| (current_player==BLACK && white_pressed)) {
