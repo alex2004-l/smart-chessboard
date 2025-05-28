@@ -22,8 +22,8 @@ typedef enum player{
 } PLAYER;
 
 typedef enum states {
-  BEGINNING, START, PICK_ROW,
-  PICK_COLUMN, MOVE, END
+  BEGINNING, START, PICK_PIECE_TO_MOVE,
+  PICK_NEW_POSITION, MOVE, END
 } STATES;
 
 
@@ -31,11 +31,19 @@ uint8_t current_player;
 bool move_made;
 uint8_t state;
 
-// uint32_t last_debounce_white = 0;
-// uint32_t last_debounce_black = 0;
+int8_t selected_row   = -1;
+int8_t selected_column = -1;
+
+uint32_t last_debounce_white = 0;
+uint32_t last_debounce_black = 0;
 
 uint32_t player_time_white = 600;
 uint32_t player_time_black = 600;
+
+volatile bool white_pressed = false;
+volatile bool black_pressed = false;
+
+byte key = 0;
 
 int8_t board_configuration[8][8] = {
   {-ROOK,  -KNIGHT, -BISHOP, -QUEEN, -KING,  -BISHOP, -KNIGHT, -ROOK},
@@ -50,81 +58,101 @@ int8_t board_configuration[8][8] = {
 
 uint8_t possible_moves[64][2];
 
-// interrupt when white presses button
-// void IRAM_ATTR press_button_white() {
-//   if ((millis() - last_debounce_white) < DEBOUNCE_DELAY) return;
-//   last_debounce_white = millis();
+void beginning(void) {
+  display_message(lcd, "Smart chessboard");
+  display_message(lcd, "Press to start", 0, 1, false);
+  if (white_pressed || black_pressed) {
+    state = START;
+    white_pressed = false;
+    black_pressed = false;
+  }
+}
 
-//   switch (state) {
-//     case BEGINNING:
-//       Serial.println("Please put all pieces on the board before starting.");
-//       break;
+void start(void) {
+  display_message(lcd, "3");
+  delay(1000);
+  display_message(lcd, "2");
+  delay(1000);
+  display_message(lcd, "1");
+  delay(1000);
+  display_message(lcd, "Start");
+  state = PICK_PIECE_TO_MOVE;
+  if (white_pressed || black_pressed) {
+    Serial.println("Invalid pressing of buttons during initialization");
+    white_pressed = false;
+    black_pressed = false;
+  }
+}
 
-//     case READY:
-//       if (current_player == WHITE) {
-//         state = MOVE;
-//         // to start timer for white
-//       }
-//       break;
-//     case PICK_ROW:
-//       break;
-//     case PICK_COLUMN:
-//       break;
-//     case MOVE:
-//         if (current_player == WHITE) {
-//             current_player = BLACK;
-//             state = PICK_ROW;
-//         }
-//         break;
+void pick_piece_to_move(void) {
+  display_message(lcd, "Select piece");
+  if (current_player == WHITE) {
+    display_message(lcd, "WHITE", 0, 1, false);
+  } else {
+    display_message(lcd, "BLACK", 0, 1, false);
+  }
+  delay(500);
+  key = Read_TTP229_Keypad();
+  if (key) {
+    Serial.println(key);
+    if (key <= 8) {
+      if (selected_row == -1) {
+        selected_row = key - 1;
+      } else {
+        display_message(lcd, "Row already selected");
+      }
+    } else {
+      if (selected_column == -1) {
+        selected_column = key - 9;
+      } else {
+        display_message(lcd, "Column already selected");
+      }
+    }
+  }
+  if (selected_row != -1 && selected_column != -1) {
 
-//     default:
-//       break;
-//   }
-// }
+    int8_t piece = board_configuration[selected_row][selected_column];
+    if (current_player == WHITE && piece < 0) {
+      display_message(lcd, "Not your piece");
+    } else if (current_player == BLACK && piece > 0) {
+      display_message(lcd, "Not your piece");
+    } else {
+      piece = (piece < 0) ? -piece : piece;
+      state = PICK_NEW_POSITION;
+      switch(piece) {
+      case EMPTY:
+        display_message(lcd, "No piece");
+        state = PICK_PIECE_TO_MOVE;
+        break;
+      case PAWN:
+        display_message(lcd, "Pawn");
+        break;
+      default:
+        display_message(lcd, "Something fishy");
+        break;
+      };
+    }
 
-// interrupt when black presses button
-// void IRAM_ATTR press_button_black() {
-//   if ((millis() - last_debounce_black) < DEBOUNCE_DELAY) return;
-//   last_debounce_black = millis();
+    selected_row = -1;
+    selected_column = -1;
+  }
 
-//   switch (state) {
-//     case BEGINNING:
-//       display_message(lcd"Please put all pieces on the board before starting.");
-//       break;
-//     case READY:
-//       if (current_player == BLACK) {
-//         state = MOVE;
-//         Serial.println("Game started. Black's turn.");
-//         // To start timer for black
-//       }
-//       break;
-//     case PICK_ROW:
-//       break;
-//     case PICK_COLUMN:
-//         if (current_player == BLACK) {
-//             current_player = WHITE;
-//             state = PICK_ROW;
-//         }
-//         break;
-
-//     default:
-//       break;
-//   }
-// }
-
+}
 
 void run_action() {
     switch (state)
     {
     case BEGINNING:
-        Serial.println("Waiting for all pieces to be placed on the board.");
+        beginning();
         break;
     case START:
-        Serial.println("All pieces on board. Game ready to start.");
+        start();
         break;
-    case PICK_ROW:
+    case PICK_PIECE_TO_MOVE:
+        pick_piece_to_move();
         break;
-    case PICK_COLUMN:
+    case PICK_NEW_POSITION:
+        display_message(lcd, "Selected new position");
         break;
     case END:
         break;
@@ -133,16 +161,17 @@ void run_action() {
     }
 }
 
-
 byte Read_TTP229_Keypad(void) {
   byte Num;
   byte Key_State = 0;
   for(Num = 1; Num <= 16; Num++)
   {
     digitalWrite(SCL, LOW);
+    delayMicroseconds(2);
     if (!digitalRead(SDO))
       Key_State = Num;
-      digitalWrite(SCL, HIGH);
+    digitalWrite(SCL, HIGH);
+    delayMicroseconds(2);
   } 
   return Key_State;
 }
@@ -154,14 +183,11 @@ void setup() {
   state = BEGINNING;
 
   // pinii pentru butoane
-  pinMode(WHITE_BUTTON, INPUT);
-  pinMode(BLACK_BUTTON, INPUT);
+  pinMode(WHITE_BUTTON, INPUT_PULLUP);
+  pinMode(BLACK_BUTTON, INPUT_PULLUP);
 
   pinMode(SCL, OUTPUT); 
   pinMode(SDO, INPUT);
-
-  // attachInterrupt(digitalPinToInterrupt(WHITE_BUTTON), press_button_white, FALLING);
-  // attachInterrupt(digitalPinToInterrupt(BLACK_BUTTON), press_button_black, FALLING);
 
   Serial.begin(115200);
 
@@ -177,10 +203,28 @@ void setup() {
   } else {
     Serial.println("No I2C devices found!");
   }
+
+  // Activare intreruperi pinii de butoane
+  cli();
+  EICRA |= (1 << ISC01) | (1 << ISC11);
+  EICRA &= ~((1 << ISC00) | (1 << ISC10));
+  EIMSK |= (1 << INT0) | (1 << INT1);
+  sei();
+
+  display_message(lcd, "Smart chessboard");
 }
 
 
 void loop() {
-
+  run_action();
   delay(1000);
 }
+
+ISR(INT0_vect) {
+  white_pressed = true;
+}
+
+ISR(INT1_vect) {
+  black_pressed = true;
+}
+

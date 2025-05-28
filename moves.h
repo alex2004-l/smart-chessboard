@@ -102,32 +102,30 @@ int get_king_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32]
 
 int get_pawn_moves(int x, int y, uint8_t board[8][8], uint8_t possible_moves[32][2], bool is_white) {
   int k = 0;
-  // int dir = is_white ? 1 : -1;
+  int dir = is_white ? 1 : -1;
   
-  // int start_row = is_white ? 1 : 6;
+  int start_row = is_white ? 1 : 6;
+  
+  int nx = x + dir;
+  if (is_valid(nx, y) && board[nx][y] == EMPTY) {
+    possible_moves[k][0] = nx;
+    possible_moves[k++][1] = y;
 
-  //
-  // int nx = x + dir;
-  // if (is_valid(nx, y, board) && is_empty(nx, y, board)) {
-  //   possible_moves[k][0] = nx;
-  //   possible_moves[k++][1] = y;
-
-  //  
-  //   if (x == start_row && is_empty(nx + dir, y, board)) {
-  //     possible_moves[k][0] = nx + dir;
-  //     possible_moves[k++][1] = y;
-  //   }
-  // }
-
-  //
-  // for (int dy = -1; dy <= 1; dy += 2) {
-  //   int ny = y + dy;
-  //   int cx = x + dir;
-  //   if (is_valid(cx, ny, board) && !is_empty(cx, ny, board)) {
-  //     possible_moves[k][0] = cx;
-  //     possible_moves[k++][1] = ny;
-  //   }
-  // }
+   
+    if (x == start_row && board[nx + dir][y] == EMPTY) {
+      possible_moves[k][0] = nx + dir;
+      possible_moves[k++][1] = y;
+    }
+  }
+  
+  for (int dy = -1; dy <= 1; dy += 2) {
+    int ny = y + dy;
+    int cx = x + dir;
+    if (is_valid(cx, ny) && board[cx][ny] == EMPTY) {
+      possible_moves[k][0] = cx;
+      possible_moves[k++][1] = ny;
+    }
+  }
   return k;
 }
 
